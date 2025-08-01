@@ -104,6 +104,38 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* File size indicator */
+        .file-size-indicator {
+            position: relative;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .file-size-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+            transition: width 0.3s ease;
+        }
+
+        /* Enhanced progress bar */
+        .progress-container {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar-animated {
+            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+            background-size: 200% 100%;
+            animation: progress-animation 2s infinite;
+        }
+
+        @keyframes progress-animation {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
         /* Responsive improvements */
         @media (max-width: 768px) {
             .text-6xl {
@@ -153,6 +185,12 @@
                         <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
                             อัปโหลดรูปภาพและไฟล์ต่างๆ ได้ฟรี รับลิงค์แชร์ทันที ใช้งานง่าย ปลอดภัย
                         </p>
+                        <div class="inline-flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span>รองรับไฟล์ขนาดใหญ่ถึง 100MB</span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -165,7 +203,7 @@
                         
                         <!-- Upload Area -->
                         <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-400 transition-colors cursor-pointer group">
-                            <input type="file" id="fileInput" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt">
+                            <input type="file" id="fileInput" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar">
                             <div class="space-y-4">
                                 <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
                                     <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,16 +214,29 @@
                                     <p class="text-lg text-gray-700 font-medium">ลากไฟล์มาวางที่นี่</p>
                                     <p class="text-gray-500">หรือคลิกเพื่อเลือกไฟล์</p>
                                 </div>
-                                <p class="text-sm text-gray-400">รองรับ: รูปภาพ, วิดีโอ, เสียง, PDF, DOC, TXT (สูงสุด 10MB)</p>
+                                <p class="text-sm text-gray-400">รองรับ: รูปภาพ, วิดีโอ, เสียง, PDF, DOC, TXT, ZIP (สูงสุด 100MB)</p>
                             </div>
                         </div>
 
-                        <!-- Progress Bar -->
-                        <div id="progressContainer" class="hidden mt-6">
-                            <div class="bg-gray-200 rounded-full h-2">
-                                <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        <!-- Enhanced Progress Bar -->
+                        <div id="progressContainer" class="hidden mt-6 space-y-3">
+                            <div class="progress-container bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div id="progressBar" class="progress-bar-animated h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
                             </div>
-                            <p id="progressText" class="text-sm text-gray-600 mt-2">กำลังอัปโหลด...</p>
+                            <div class="flex justify-between text-sm">
+                                <span id="progressText" class="text-gray-600">กำลังเตรียมไฟล์...</span>
+                                <span id="progressPercent" class="text-gray-800 font-medium">0%</span>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500">
+                                <span id="uploadSpeed">ความเร็ว: -</span>
+                                <span id="timeRemaining">เวลาคงเหลือ: -</span>
+                            </div>
+                        </div>
+
+                        <!-- Multiple file upload queue -->
+                        <div id="uploadQueue" class="hidden mt-6 space-y-3">
+                            <h4 class="text-lg font-medium text-gray-900">คิวการอัปโหลด</h4>
+                            <div id="queueList" class="space-y-2"></div>
                         </div>
                     </div>
                 </div>
@@ -194,7 +245,13 @@
             <!-- Files Section -->
             <section id="files" class="py-20 bg-gray-50">
                 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <h3 class="text-2xl font-bold text-gray-900 mb-8 text-center">ไฟล์ที่อัปโหลดแล้ว</h3>
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-2xl font-bold text-gray-900">ไฟล์ที่อัปโหลดแล้ว</h3>
+                        <div class="flex items-center space-x-4 text-sm text-gray-600">
+                            <span id="storageUsage">พื้นที่ใช้: 0 MB</span>
+                            <span id="fileCount">จำนวนไฟล์: 0</span>
+                        </div>
+                    </div>
                     
                     <div id="filesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <!-- ไฟล์จะแสดงที่นี่ -->
@@ -234,13 +291,27 @@
     <script>
         class FileStorage {
             constructor() {
-                this.files = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
+                this.files = this.loadFiles();
+                this.uploadQueue = [];
+                this.isUploading = false;
+                this.chunkSize = 1024 * 1024; // 1MB chunks
                 this.init();
             }
 
             init() {
                 this.setupEventListeners();
                 this.renderFiles();
+                this.updateStorageInfo();
+            }
+
+            loadFiles() {
+                try {
+                    const stored = localStorage.getItem('uploadedFiles');
+                    return stored ? JSON.parse(stored) : [];
+                } catch (error) {
+                    console.error('Error loading files:', error);
+                    return [];
+                }
             }
 
             setupEventListeners() {
@@ -273,48 +344,236 @@
             }
 
             handleFiles(files) {
-                files.forEach(file => this.uploadFile(file));
+                // Add files to upload queue
+                files.forEach(file => {
+                    if (file.size > 100 * 1024 * 1024) {
+                        this.showToast(`ไฟล์ "${file.name}" มีขนาดใหญ่เกินไป (สูงสุด 100MB)`, 'error');
+                        return;
+                    }
+                    
+                    const queueItem = {
+                        id: this.generateId(),
+                        file: file,
+                        status: 'pending',
+                        progress: 0
+                    };
+                    
+                    this.uploadQueue.push(queueItem);
+                });
+
+                this.renderUploadQueue();
+                this.processUploadQueue();
             }
 
-            uploadFile(file) {
-                // Validate file size (10MB limit)
-                if (file.size > 10 * 1024 * 1024) {
-                    this.showToast('ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 10MB)', 'error');
-                    return;
+            async processUploadQueue() {
+                if (this.isUploading || this.uploadQueue.length === 0) return;
+
+                this.isUploading = true;
+                
+                while (this.uploadQueue.length > 0) {
+                    const queueItem = this.uploadQueue[0];
+                    await this.uploadFileWithChunks(queueItem);
+                    this.uploadQueue.shift();
+                    this.renderUploadQueue();
                 }
 
-                const fileId = this.generateId();
-                const reader = new FileReader();
+                this.isUploading = false;
+                this.hideProgress();
+                document.getElementById('uploadQueue').classList.add('hidden');
+            }
 
-                this.showProgress();
+            async uploadFileWithChunks(queueItem) {
+                const { file, id } = queueItem;
+                
+                try {
+                    this.showProgress();
+                    queueItem.status = 'uploading';
+                    this.renderUploadQueue();
 
-                reader.onload = (e) => {
+                    let processedData;
+                    const startTime = Date.now();
+
+                    if (file.size <= 10 * 1024 * 1024) {
+                        // Small files: process normally
+                        processedData = await this.readFileAsDataURL(file, (progress) => {
+                            this.updateProgress(progress, `กำลังอัปโหลด "${file.name}"...`, startTime, file.size);
+                            queueItem.progress = progress;
+                            this.renderUploadQueue();
+                        });
+                    } else {
+                        // Large files: process in chunks
+                        processedData = await this.processLargeFile(file, (progress) => {
+                            this.updateProgress(progress, `กำลังประมวลผล "${file.name}"...`, startTime, file.size);
+                            queueItem.progress = progress;
+                            this.renderUploadQueue();
+                        });
+                    }
+
+                    // Save file data
                     const fileData = {
-                        id: fileId,
+                        id: id,
                         name: file.name,
                         type: file.type,
                         size: file.size,
-                        data: e.target.result,
+                        data: processedData,
                         uploadDate: new Date().toISOString(),
-                        url: this.generateFileUrl(fileId)
+                        url: this.generateFileUrl(id)
                     };
 
                     this.files.push(fileData);
                     this.saveFiles();
                     this.renderFiles();
-                    this.hideProgress();
-                    this.showToast('อัปโหลดไฟล์สำเร็จแล้ว!', 'success');
-                };
+                    this.updateStorageInfo();
 
-                reader.onerror = () => {
-                    this.hideProgress();
-                    this.showToast('เกิดข้อผิดพลาดในการอัปโหลด', 'error');
-                };
+                    queueItem.status = 'completed';
+                    this.renderUploadQueue();
+                    
+                    this.showToast(`อัปโหลด "${file.name}" สำเร็จแล้ว!`, 'success');
 
-                // Simulate upload progress
-                setTimeout(() => {
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    queueItem.status = 'error';
+                    this.renderUploadQueue();
+                    this.showToast(`เกิดข้อผิดพลาดในการอัปโหลด "${file.name}"`, 'error');
+                }
+            }
+
+            async processLargeFile(file, progressCallback) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    let loadedBytes = 0;
+
+                    reader.onload = (e) => {
+                        resolve(e.target.result);
+                    };
+
+                    reader.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            loadedBytes = e.loaded;
+                            const progress = Math.round((loadedBytes / e.total) * 100);
+                            progressCallback(progress);
+                        }
+                    };
+
+                    reader.onerror = () => {
+                        reject(new Error('Failed to read file'));
+                    };
+
+                    // Use readAsDataURL for all file types
                     reader.readAsDataURL(file);
-                }, 500);
+                });
+            }
+
+            readFileAsDataURL(file, progressCallback) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = (e) => {
+                        progressCallback(100);
+                        resolve(e.target.result);
+                    };
+
+                    reader.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const progress = Math.round((e.loaded / e.total) * 100);
+                            progressCallback(progress);
+                        }
+                    };
+
+                    reader.onerror = () => {
+                        reject(new Error('Failed to read file'));
+                    };
+
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            updateProgress(progress, message, startTime, fileSize) {
+                const progressBar = document.getElementById('progressBar');
+                const progressText = document.getElementById('progressText');
+                const progressPercent = document.getElementById('progressPercent');
+                const uploadSpeed = document.getElementById('uploadSpeed');
+                const timeRemaining = document.getElementById('timeRemaining');
+
+                progressBar.style.width = progress + '%';
+                progressText.textContent = message;
+                progressPercent.textContent = progress + '%';
+
+                // Calculate upload speed and time remaining
+                const elapsed = (Date.now() - startTime) / 1000;
+                const bytesProcessed = (fileSize * progress) / 100;
+                const speed = bytesProcessed / elapsed;
+                const remaining = (fileSize - bytesProcessed) / speed;
+
+                if (elapsed > 1 && progress > 5) {
+                    uploadSpeed.textContent = `ความเร็ว: ${this.formatSpeed(speed)}`;
+                    timeRemaining.textContent = `เวลาคงเหลือ: ${this.formatTime(remaining)}`;
+                }
+            }
+
+            formatSpeed(bytesPerSecond) {
+                if (bytesPerSecond < 1024) return `${Math.round(bytesPerSecond)} B/s`;
+                if (bytesPerSecond < 1024 * 1024) return `${Math.round(bytesPerSecond / 1024)} KB/s`;
+                return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
+            }
+
+            formatTime(seconds) {
+                if (seconds < 60) return `${Math.round(seconds)} วินาที`;
+                if (seconds < 3600) return `${Math.round(seconds / 60)} นาที`;
+                return `${Math.round(seconds / 3600)} ชั่วโมง`;
+            }
+
+            renderUploadQueue() {
+                const uploadQueue = document.getElementById('uploadQueue');
+                const queueList = document.getElementById('queueList');
+
+                if (this.uploadQueue.length === 0) {
+                    uploadQueue.classList.add('hidden');
+                    return;
+                }
+
+                uploadQueue.classList.remove('hidden');
+                queueList.innerHTML = this.uploadQueue.map(item => {
+                    const statusColor = {
+                        'pending': 'bg-gray-100 text-gray-700',
+                        'uploading': 'bg-blue-100 text-blue-700',
+                        'completed': 'bg-green-100 text-green-700',
+                        'error': 'bg-red-100 text-red-700'
+                    };
+
+                    const statusText = {
+                        'pending': 'รอคิว',
+                        'uploading': 'กำลังอัปโหลด',
+                        'completed': 'สำเร็จ',
+                        'error': 'ผิดพลาด'
+                    };
+
+                    return `
+                        <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">${item.file.name}</p>
+                                    <p class="text-xs text-gray-500">${this.formatFileSize(item.file.size)}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                ${item.status === 'uploading' ? 
+                                    `<div class="w-16 bg-gray-200 rounded-full h-2">
+                                        <div class="bg-blue-500 h-2 rounded-full" style="width: ${item.progress}%"></div>
+                                     </div>` : ''
+                                }
+                                <span class="px-2 py-1 text-xs rounded-full ${statusColor[item.status]}">
+                                    ${statusText[item.status]}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
             }
 
             generateId() {
@@ -327,7 +586,24 @@
             }
 
             saveFiles() {
-                localStorage.setItem('uploadedFiles', JSON.stringify(this.files));
+                try {
+                    localStorage.setItem('uploadedFiles', JSON.stringify(this.files));
+                } catch (error) {
+                    if (error.name === 'QuotaExceededError') {
+                        this.showToast('พื้นที่เก็บข้อมูลเต็ม กรุณาลบไฟล์เก่าออกบางส่วน', 'error');
+                    } else {
+                        this.showToast('ไม่สามารถบันทึกไฟล์ได้', 'error');
+                    }
+                }
+            }
+
+            updateStorageInfo() {
+                const totalSize = this.files.reduce((sum, file) => sum + file.size, 0);
+                const storageUsage = document.getElementById('storageUsage');
+                const fileCount = document.getElementById('fileCount');
+                
+                storageUsage.textContent = `พื้นที่ใช้: ${this.formatFileSize(totalSize)}`;
+                fileCount.textContent = `จำนวนไฟล์: ${this.files.length}`;
             }
 
             renderFiles() {
@@ -348,6 +624,7 @@
                 const isImage = file.type.startsWith('image/');
                 const fileSize = this.formatFileSize(file.size);
                 const uploadDate = new Date(file.uploadDate).toLocaleDateString('th-TH');
+                const sizePercentage = Math.min((file.size / (100 * 1024 * 1024)) * 100, 100);
 
                 return `
                     <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
@@ -366,9 +643,12 @@
                         </div>
                         <div class="p-6">
                             <h4 class="font-medium text-gray-900 mb-2 truncate" title="${file.name}">${file.name}</h4>
-                            <div class="flex items-center justify-between text-sm text-gray-500 mb-4">
+                            <div class="flex items-center justify-between text-sm text-gray-500 mb-2">
                                 <span>${fileSize}</span>
                                 <span>${uploadDate}</span>
+                            </div>
+                            <div class="file-size-indicator mb-4">
+                                <div class="file-size-bar" style="width: ${sizePercentage}%"></div>
                             </div>
                             <div class="space-y-2">
                                 <div class="flex items-center space-x-2">
@@ -404,6 +684,9 @@
                 }
                 if (fileType.includes('audio')) {
                     return '<svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"></path></svg>';
+                }
+                if (fileType.includes('zip') || fileType.includes('rar')) {
+                    return '<svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path></svg>';
                 }
                 return '<svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z"></path></svg>';
             }
@@ -443,27 +726,21 @@
                     this.files = this.files.filter(f => f.id !== fileId);
                     this.saveFiles();
                     this.renderFiles();
+                    this.updateStorageInfo();
                     this.showToast('ลบไฟล์แล้ว', 'success');
                 }
             }
 
             showProgress() {
                 document.getElementById('progressContainer').classList.remove('hidden');
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += 10;
-                    document.getElementById('progressBar').style.width = progress + '%';
-                    if (progress >= 100) {
-                        clearInterval(interval);
-                    }
-                }, 100);
             }
 
             hideProgress() {
                 setTimeout(() => {
                     document.getElementById('progressContainer').classList.add('hidden');
                     document.getElementById('progressBar').style.width = '0%';
-                }, 500);
+                    document.getElementById('progressPercent').textContent = '0%';
+                }, 1000);
             }
 
             showToast(message, type) {
@@ -483,7 +760,7 @@
                 
                 setTimeout(() => {
                     toast.classList.add('translate-x-full');
-                }, 3000);
+                }, 4000);
             }
         }
 
@@ -497,7 +774,6 @@
                 const fileId = hash.replace('#file/', '');
                 const file = fileStorage.files.find(f => f.id === fileId);
                 if (file) {
-                    // Auto-scroll to files section and highlight the file
                     document.getElementById('files').scrollIntoView({ behavior: 'smooth' });
                 }
             }
